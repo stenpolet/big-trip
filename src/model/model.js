@@ -13,6 +13,17 @@ class Model {
     this.#points = newPoints;
   }
 
+  addPoint(point) {
+    this.#points = [...this.#points, point].sort(
+      (firstPoint, secondPoint) =>
+        new Date(firstPoint.dateFrom) - new Date(secondPoint.dateFrom),
+    );
+  }
+
+  deletePoint(pointId) {
+    this.#points = this.#points.filter((point) => point.id !== pointId);
+  }
+
   updatePoint(updatedPoint) {
     const pointIndex = this.#points.findIndex(
       (point) => point.id === updatedPoint.id,

@@ -10,12 +10,15 @@ export default class FormNewView extends AbstractStatefulView {
   #handleDestinationChange;
   #handleOfferChange;
   #handleSubmit;
+  #handleCancel;
 
-  constructor(destinations = [], offers = []) {
+  constructor(destinations = [], offers = [], onSubmit, onCancel) {
     super();
 
     this.#destinations = destinations;
     this.#offers = offers;
+    this.#handleSubmit = onSubmit;
+    this.#handleCancel = onCancel;
 
     this._state = {
       type: 'flight',
@@ -26,7 +29,6 @@ export default class FormNewView extends AbstractStatefulView {
     this.#handleTypeChange = this.#onTypeChange.bind(this);
     this.#handleDestinationChange = this.#onDestinationChange.bind(this);
     this.#handleOfferChange = this.#onOfferChange.bind(this);
-    this.#handleSubmit = this.#onSubmit.bind(this);
 
     this._restoreHandlers();
   }
@@ -283,12 +285,22 @@ export default class FormNewView extends AbstractStatefulView {
 
   #onSubmit(evt) {
     evt.preventDefault();
+    this.#handleSubmit(new FormData(evt.target), this._state);
+  }
+
+  #onCancel(evt) {
+    evt.preventDefault();
+    this.#handleCancel();
   }
 
   _restoreHandlers() {
     this.element
       .querySelector('form')
-      .addEventListener('submit', this.#handleSubmit);
+      .addEventListener('submit', this.#onSubmit.bind(this));
+
+    this.element
+      .querySelector('.event__reset-btn')
+      .addEventListener('click', this.#onCancel.bind(this));
 
     this.element.querySelectorAll('.event__type-input').forEach((input) => {
       input.addEventListener('change', this.#handleTypeChange);

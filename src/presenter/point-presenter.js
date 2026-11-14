@@ -2,6 +2,12 @@ import { render, replace } from '../framework/render.js';
 import FormEditView from '../view/form-edit-view.js';
 import PointView from '../view/point-view.js';
 
+const UserAction = {
+  UPDATE: 'UPDATE',
+  ADD: 'ADD',
+  DELETE: 'DELETE',
+};
+
 const parseDateTime = (value) => {
   const [date, time] = value.split(' ');
   const [day, month, year] = date.split('/');
@@ -52,6 +58,7 @@ export default class PointPresenter {
       this.#offers,
       this.#handleFormSubmit,
       this.#handleEditFormRollupClick,
+      this.#handleDeleteClick,
     );
 
     render(this.#pointView, this.#container);
@@ -94,7 +101,7 @@ export default class PointPresenter {
   }
 
   #handleFavoriteClick = (updatedPoint) => {
-    this.#onDataChange(updatedPoint);
+    this.#onDataChange(UserAction.UPDATE, updatedPoint);
   };
 
   #handleRollupClick = () => {
@@ -104,6 +111,11 @@ export default class PointPresenter {
     this.#isEditing = true;
 
     document.addEventListener('keydown', this.#handleEscKeydown);
+  };
+
+  #handleDeleteClick = (evt) => {
+    evt.preventDefault();
+    this.#onDataChange(UserAction.DELETE, this.#point);
   };
 
   #handleEditFormRollupClick = () => {
@@ -141,7 +153,7 @@ export default class PointPresenter {
       offers: selectedOffers,
     };
 
-    this.#onDataChange(updatedPoint);
+    this.#onDataChange(UserAction.UPDATE, updatedPoint);
   };
 
   #handleEscKeydown = (evt) => {
@@ -152,3 +164,5 @@ export default class PointPresenter {
     }
   };
 }
+
+export { UserAction };

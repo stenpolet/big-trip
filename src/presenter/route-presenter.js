@@ -1,27 +1,52 @@
 import { render, remove } from '../framework/render.js';
-import PointPresenter from './point-presenter.js';
+import PointPresenter, { UserAction } from './point-presenter.js';
 import ListEmptyView from '../view/list-empty-view.js';
+import FormNewView from '../view/form-new-view.js';
+
+const parseDateTime = (value) => {
+  const [date, time] = value.split(' ');
+  const [day, month, year] = date.split('/');
+  const [hours, minutes] = time.split(':');
+
+  return new Date(
+    2000 + Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hours),
+    Number(minutes),
+  );
+};
 
 export default class RoutePresenter {
   #container;
   #model;
   #filterModel;
-  #points = [];
   #destinations;
   #offers;
+  #newEventButton;
   #pointPresenters = [];
   #emptyView = null;
+  #newPointView = null;
 
-  constructor({ container, model, filterModel, destinations, offers }) {
+  constructor({
+    container,
+    model,
+    filterModel,
+    destinations,
+    offers,
+    newEventButton,
+  }) {
     this.#container = container;
     this.#model = model;
     this.#filterModel = filterModel;
     this.#destinations = destinations;
     this.#offers = offers;
+    this.#newEventButton = newEventButton;
   }
 
   init() {
     this.#filterModel.addObserver(this.#handleModelEvent);
+    this.#newEventButton.addEventListener('click', this.#handleNewEventClick);
     this.#renderPoints();
   }
 
@@ -54,9 +79,9 @@ export default class RoutePresenter {
       .querySelectorAll('.event:not(.event--edit)')
       .forEach((element) => element.closest('.trip-events__item')?.remove());
 
-    this.#points = this.#getPoints();
+    const points = this.#getPoints();
 
-    if (this.#points.length === 0) {
+    if (points.length === 0) {
       this.#container.hidden = true;
 
       if (this.#emptyView) {
@@ -75,7 +100,7 @@ export default class RoutePresenter {
       this.#emptyView = null;
     }
 
-    this.#points.forEach((point) => {
+    points.forEach((point) => {
       const pointPresenter = new PointPresenter({
         point,
         destinations: this.#destinations,
@@ -94,25 +119,102 @@ export default class RoutePresenter {
     this.#pointPresenters.forEach((presenter) => presenter.resetView());
   };
 
-  #handlePointChange = (updatedPoint) => {
-    const pointExists = this.#model
-      .getPoints()
-      .some((point) => point.id === updatedPoint.id);
-
-    if (!pointExists) {
-      return;
+  #handlePointChange = (action, point) => {
+    switch (action) {
+      case UserAction.UPDATE:
+        this.#model.updatePoint(point);
+        break;
+      case UserAction.ADD:
+        this.#model.addPoint(point);
+        break;
+      case UserAction.DELETE:
+        this.#model.deletePoint(point.id);
+        break;
+      default:
+        return;
     }
 
-    this.#model.updatePoint(updatedPoint);
     this.#renderPoints();
   };
 
   #handleModelEvent = () => {
     this.#renderPoints();
+    this.#resetSort();
+  };
 
+  #resetSort() {
     const daySort = document.querySelector('#sort-day');
     if (daySort) {
       daySort.checked = true;
+    }
+  }
+
+  #handleNewEventClick = () => {
+    if (this.#newPointView) {
+      return;
+    }
+
+    this.#resetAllPointPresenters();
+    this.#filterModel.setFilter('everything');
+    this.#resetSort();
+
+    if (this.#emptyView) {
+      remove(this.#emptyView);
+      this.#emptyView = null;
+    }
+    this.#container.hidden = false;
+
+    this.#newPointView = new FormNewView(
+      this.#destinations,
+      this.#offers,
+      this.#handleNewPointSubmit,
+      this.#closeNewPointForm,
+    );
+
+    render(this.#newPointView, this.#container, 'afterbegin');
+    this.#newEventButton.disabled = true;
+    document.addEventListener('keydown', this.#handleEscKeydown);
+  };
+
+  #handleNewPointSubmit = (formData, state) => {
+    const destination = this.#destinations.find(
+      (item) => item.name === formData.get('event-destination'),
+    );
+
+    if (!destination) {
+      return;
+    }
+
+    const point = {
+      id: crypto.randomUUID(),
+      type: formData.get('event-type'),
+      destination: destination.id,
+      dateFrom: parseDateTime(formData.get('event-start-time')),
+      dateTo: parseDateTime(formData.get('event-end-time')),
+      basePrice: Number(formData.get('event-price')),
+      offers: state.offers,
+      isFavorite: false,
+    };
+
+    this.#handlePointChange(UserAction.ADD, point);
+    this.#closeNewPointForm();
+  };
+
+  #closeNewPointForm = () => {
+    if (!this.#newPointView) {
+      return;
+    }
+
+    remove(this.#newPointView);
+    this.#newPointView = null;
+    this.#newEventButton.disabled = false;
+    document.removeEventListener('keydown', this.#handleEscKeydown);
+    this.#renderPoints();
+  };
+
+  #handleEscKeydown = (evt) => {
+    if (evt.key === 'Escape') {
+      this.#closeNewPointForm();
     }
   };
 }
