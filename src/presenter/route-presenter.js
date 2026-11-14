@@ -2,14 +2,16 @@ import PointPresenter from './point-presenter.js';
 
 export default class RoutePresenter {
   #container;
+  #model;
   #points;
   #destinations;
   #offers;
   #pointPresenters = [];
 
-  constructor({ container, points, destinations, offers }) {
+  constructor({ container, model, destinations, offers }) {
     this.#container = container;
-    this.#points = points;
+    this.#model = model;
+    this.#points = model.getPoints();
     this.#destinations = destinations;
     this.#offers = offers;
   }
@@ -43,7 +45,8 @@ export default class RoutePresenter {
       return;
     }
 
-    Object.assign(this.#points[pointIndex], updatedPoint);
+    this.#model.updatePoint(updatedPoint);
+    this.#points = this.#model.getPoints();
     this.#pointPresenters[pointIndex].update(this.#points[pointIndex]);
   };
 }

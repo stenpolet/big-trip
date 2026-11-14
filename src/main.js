@@ -8,7 +8,6 @@ import Model from './model/model.js';
 
 const model = new Model();
 
-const points = model.getPoints();
 const destinations = model.getDestinations();
 const offers = model.getOffers();
 
@@ -25,7 +24,7 @@ render(new FormNewView(destinations, offers), eventsList.element);
 
 const routePresenter = new RoutePresenter({
   container: eventsList.element,
-  points,
+  model,
   destinations,
   offers,
 });
