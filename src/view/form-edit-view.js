@@ -232,8 +232,10 @@ export default class FormEditView extends AbstractStatefulView {
                 class="event__input event__input--price"
                 id="${this.#id}-price"
                 name="event-price"
-                type="text"
+                type="number"
+                min="0"
                 value="${this._state.basePrice ?? point.basePrice}"
+                required
               />
             </div>
 
