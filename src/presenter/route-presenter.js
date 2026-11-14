@@ -1,22 +1,80 @@
+import { render, remove } from '../framework/render.js';
 import PointPresenter from './point-presenter.js';
+import ListEmptyView from '../view/list-empty-view.js';
 
 export default class RoutePresenter {
   #container;
   #model;
-  #points;
+  #filterModel;
+  #points = [];
   #destinations;
   #offers;
   #pointPresenters = [];
+  #emptyView = null;
 
-  constructor({ container, model, destinations, offers }) {
+  constructor({ container, model, filterModel, destinations, offers }) {
     this.#container = container;
     this.#model = model;
-    this.#points = model.getPoints();
+    this.#filterModel = filterModel;
     this.#destinations = destinations;
     this.#offers = offers;
   }
 
   init() {
+    this.#filterModel.addObserver(this.#handleModelEvent);
+    this.#renderPoints();
+  }
+
+  #getPoints() {
+    const points = this.#model.getPoints();
+    const filter = this.#filterModel.getFilter();
+    const now = new Date();
+
+    switch (filter) {
+      case 'future':
+        return points.filter((point) => new Date(point.dateFrom) > now);
+      case 'present':
+        return points.filter(
+          (point) =>
+            new Date(point.dateFrom) <= now && new Date(point.dateTo) >= now,
+        );
+      case 'past':
+        return points.filter((point) => new Date(point.dateTo) < now);
+      case 'everything':
+      default:
+        return points;
+    }
+  }
+
+  #renderPoints() {
+    this.#pointPresenters.forEach((presenter) => presenter.resetView());
+    this.#pointPresenters = [];
+
+    this.#container
+      .querySelectorAll('.event:not(.event--edit)')
+      .forEach((element) => element.closest('.trip-events__item')?.remove());
+
+    this.#points = this.#getPoints();
+
+    if (this.#points.length === 0) {
+      this.#container.hidden = true;
+
+      if (this.#emptyView) {
+        remove(this.#emptyView);
+      }
+
+      this.#emptyView = new ListEmptyView(this.#filterModel.getFilter());
+      render(this.#emptyView, this.#container.parentElement);
+      return;
+    }
+
+    this.#container.hidden = false;
+
+    if (this.#emptyView) {
+      remove(this.#emptyView);
+      this.#emptyView = null;
+    }
+
     this.#points.forEach((point) => {
       const pointPresenter = new PointPresenter({
         point,
@@ -37,16 +95,24 @@ export default class RoutePresenter {
   };
 
   #handlePointChange = (updatedPoint) => {
-    const pointIndex = this.#points.findIndex(
-      (point) => point.id === updatedPoint.id,
-    );
+    const pointExists = this.#model
+      .getPoints()
+      .some((point) => point.id === updatedPoint.id);
 
-    if (pointIndex === -1) {
+    if (!pointExists) {
       return;
     }
 
     this.#model.updatePoint(updatedPoint);
-    this.#points = this.#model.getPoints();
-    this.#pointPresenters[pointIndex].update(this.#points[pointIndex]);
+    this.#renderPoints();
+  };
+
+  #handleModelEvent = () => {
+    this.#renderPoints();
+
+    const daySort = document.querySelector('#sort-day');
+    if (daySort) {
+      daySort.checked = true;
+    }
   };
 }

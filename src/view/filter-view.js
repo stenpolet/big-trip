@@ -1,10 +1,34 @@
 import AbstractView from '../framework/view/abstract-view.js';
 
 export default class FilterView extends AbstractView {
+  #onFilterChange;
+
+  constructor(onFilterChange, activeFilter) {
+    super();
+    this.#onFilterChange = onFilterChange;
+
+    this.element.addEventListener('change', this.#handleFilterChange);
+
+    const activeInput = this.element.querySelector(
+      `[name="trip-filter"][value="${activeFilter}"]`,
+    );
+
+    if (activeInput) {
+      activeInput.checked = true;
+    }
+  }
+
+  #handleFilterChange = (evt) => {
+    if (evt.target.matches('[name="trip-filter"]')) {
+      this.#onFilterChange(evt.target.value);
+    }
+  };
+
   get template() {
     return /* HTML */ `<form action="#" class="trip-filters" method="get">
       <div class="trip-filters__filter">
         <input
+          checked=""
           class="trip-filters__filter-input visually-hidden"
           id="filter-everything"
           name="trip-filter"
@@ -41,7 +65,6 @@ export default class FilterView extends AbstractView {
       </div>
       <div class="trip-filters__filter">
         <input
-          checked=""
           class="trip-filters__filter-input visually-hidden"
           id="filter-past"
           name="trip-filter"
